@@ -1,0 +1,41 @@
+name: CodSpeed
+'on':
+  push:
+    branches:
+    - main
+  pull_request: null
+  workflow_dispatch: null
+permissions:
+  contents: read
+  id-token: write
+env:
+  RUSTFLAGS: --cfg uuid_unstable
+jobs:
+  codspeed:
+    name: Run benchmarks
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@stable
+    - name: Build the package
+      uses: PyO3/maturin-action@v1
+      with:
+        args: --release --out dist
+        sccache: 'true'
+    - name: Install dependencies
+      run: 'pip install dist/*.whl
+
+        pip install pytest-codspeed==4.2.0
+
+        '
+    - name: Run benchmarks
+      uses: CodSpeedHQ/action@v4.5.2
+      with:
+        upload-url: ${{ secrets.CODSPEED_FRANCOIS_DEV_UPLOAD_URL }}
+        mode: simulation
+        run: pytest benchmarks/ --codspeed
