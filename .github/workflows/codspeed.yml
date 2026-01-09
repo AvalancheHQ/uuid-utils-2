@@ -1,0 +1,38 @@
+name: CodSpeed
+'on':
+  push:
+    branches:
+    - main
+  pull_request: null
+  workflow_dispatch: null
+permissions:
+  contents: read
+  id-token: write
+env:
+  RUSTFLAGS: --cfg uuid_unstable
+jobs:
+  codspeed:
+    name: Run benchmarks
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+    - name: Install maturin
+      run: pip install maturin
+    - name: Build Python extension
+      run: maturin build --release
+    - name: Install uuid-utils
+      run: pip install target/wheels/*.whl
+    - name: Install dependencies
+      run: pip install pytest pytest-codspeed
+    - name: Run benchmarks
+      uses: CodSpeedHQ/action@v4
+      with:
+        upload-url: ${{ secrets.CODSPEED_STAGING_UPLOAD_URL }}
+        mode: simulation
+        run: pytest tests/test_benchmarks.py --codspeed
